@@ -4,8 +4,7 @@ import os
 
 app = Flask(__name__)
 
-# ---------- DATABASE (SUPABASE / POSTGRES) ----------
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = os.environ["DATABASE_URL"]
 
 def get_db():
     return psycopg2.connect(DATABASE_URL)
@@ -22,8 +21,6 @@ def get_images(gallery_id):
     conn.close()
     return [r[0] for r in rows]
 
-# ---------- ROUTES ----------
-
 @app.route("/")
 def index():
     return "Discord Gallery is running."
@@ -39,7 +36,6 @@ def gallery(gallery_id):
         gallery_id=gallery_id
     )
 
-# ---------- RUN ----------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    # IMPORTANT: Railway public networking uses port 5000
+    app.run(host="0.0.0.0", port=5000)
