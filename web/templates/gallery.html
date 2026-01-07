@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Gallery {{ gallery_id }}</title>
+  <style>
+    body {
+      background:#0f0f0f;
+      color:#fff;
+      font-family: Arial, sans-serif;
+      text-align:center;
+      margin:0;
+      padding:20px;
+    }
+    img {
+      max-width:95%;
+      max-height:80vh;
+      border-radius:8px;
+    }
+    button {
+      font-size:18px;
+      padding:10px 18px;
+      margin:10px;
+      cursor:pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h2 id="counter"></h2>
+<img id="image">
+
+<br>
+<button onclick="prev()">◀ Prev</button>
+<button onclick="next()">Next ▶</button>
+
+<script>
+  const images = {{ images | tojson }};
+  let index = 0;
+
+  const img = document.getElementById("image");
+  const counter = document.getElementById("counter");
+
+  function render() {
+    img.src = images[index];
+    counter.innerText = `Image ${index + 1} / ${images.length}`;
+  }
+
+  function next() {
+    index = (index + 1) % images.length;
+    render();
+  }
+
+  function prev() {
+    index = (index - 1 + images.length) % images.length;
+    render();
+  }
+
+  render();
+</script>
+
+</body>
+</html>
