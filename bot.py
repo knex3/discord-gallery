@@ -4,15 +4,17 @@ from discord.ext import commands
 import psycopg2
 
 # ---------------- CONFIG ----------------
-GALLERY_BASE_URL = "https://discord-gallery.up.railway.app"
-# ⬆️ change this if Railway gives you a different URL
+GALLERY_BASE_URL = os.environ.get(
+    "GALLERY_BASE_URL",
+    "https://discord-gallery-production.up.railway.app"
+)
 
 # ---------------- DISCORD ----------------
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ---------------- DATABASE (POSTGRES) ----------------
+# ---------------- DATABASE (SUPABASE POSTGRES) ----------------
 conn = psycopg2.connect(os.environ["DATABASE_URL"])
 conn.autocommit = True
 cursor = conn.cursor()
@@ -41,6 +43,7 @@ async def on_message(message):
         return
 
     uid = message.author.id
+
     if uid in active_galleries:
         for attachment in message.attachments:
             if attachment.content_type and attachment.content_type.startswith("image"):
@@ -53,17 +56,17 @@ async def on_message(message):
 async def gallery(ctx, action=None):
     uid = ctx.author.id
 
-    # START
+    # START SESSION
     if action == "start":
         active_galleries[uid] = []
         await ctx.send(
             "🟢 **Gallery started**\n"
-            "Upload images (multiple messages allowed).\n"
+            "Upload images (you can send multiple messages).\n"
             "Finish with `!gallery done`."
         )
         return
 
-    # DONE
+    # FINISH SESSION
     if action == "done":
         images = active_galleries.get(uid)
 
