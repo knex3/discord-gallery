@@ -1,33 +1,32 @@
 from flask import Flask, render_template, abort
-import sqlite3
+import psycopg2
 import os
 
 app = Flask(__name__)
 
-# ---------- DATABASE ----------
-# SQLite must live in the project root on Railway
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "galleries.db")
+# ---------- DATABASE (SUPABASE / POSTGRES) ----------
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
+def get_db():
+    return psycopg2.connect(DATABASE_URL)
 
 def get_images(gallery_id):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT image_url FROM galleries WHERE gallery_id = ?",
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT image_url FROM galleries WHERE gallery_id = %s",
         (gallery_id,)
     )
-    rows = cursor.fetchall()
+    rows = cur.fetchall()
+    cur.close()
     conn.close()
-    return [row[0] for row in rows]
-
+    return [r[0] for r in rows]
 
 # ---------- ROUTES ----------
 
 @app.route("/")
 def index():
     return "Discord Gallery is running."
-
 
 @app.route("/gallery/<int:gallery_id>")
 def gallery(gallery_id):
@@ -40,9 +39,7 @@ def gallery(gallery_id):
         gallery_id=gallery_id
     )
 
-
-# ---------- START SERVER ----------
+# ---------- RUN ----------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    print(f"Starting Flask on port {port}")
     app.run(host="0.0.0.0", port=port)
