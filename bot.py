@@ -1,36 +1,40 @@
+import os
 import discord
 from discord.ext import commands
-import sqlite3
+import psycopg2
 
+# ---------------- CONFIG ----------------
+GALLERY_BASE_URL = "https://discord-gallery.up.railway.app"
+# ⬆️ change this if Railway gives you a different URL
+
+# ---------------- DISCORD ----------------
 intents = discord.Intents.default()
 intents.message_content = True
-
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ---------- DATABASE ----------
-db = sqlite3.connect("galleries.db")
-cursor = db.cursor()
+# ---------------- DATABASE (POSTGRES) ----------------
+conn = psycopg2.connect(os.environ["DATABASE_URL"])
+conn.autocommit = True
+cursor = conn.cursor()
 
-# CORRECT schema: multiple rows per gallery_id
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS galleries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     gallery_id INTEGER,
-    user_id INTEGER,
+    user_id BIGINT,
     image_url TEXT
 )
 """)
-db.commit()
 
-# Temporary upload sessions
+# ---------------- TEMP STORAGE ----------------
 active_galleries = {}
 
-# ---------- READY ----------
+# ---------------- READY ----------------
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
 
-# ---------- COLLECT IMAGES ----------
+# ---------------- COLLECT IMAGES ----------------
 @bot.event
 async def on_message(message):
     if message.author.bot:
@@ -44,61 +48,51 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# ---------- GALLERY COMMAND ----------
+# ---------------- GALLERY COMMAND ----------------
 @bot.command()
 async def gallery(ctx, action=None):
     uid = ctx.author.id
 
-    # START SESSION
+    # START
     if action == "start":
         active_galleries[uid] = []
         await ctx.send(
-            "Gallery started.\n"
+            "🟢 **Gallery started**\n"
             "Upload images (multiple messages allowed).\n"
             "Finish with `!gallery done`."
         )
         return
 
-    # FINISH SESSION
+    # DONE
     if action == "done":
         images = active_galleries.get(uid)
 
         if not images:
-            await ctx.send("No images uploaded.")
+            await ctx.send("❌ No images uploaded.")
             return
 
-        # Generate new gallery_id safely
-        gallery_id = cursor.execute(
-            "SELECT COALESCE(MAX(gallery_id), 0) + 1 FROM galleries"
-        ).fetchone()[0]
+        cursor.execute("SELECT COALESCE(MAX(gallery_id), 0) + 1 FROM galleries")
+        gallery_id = cursor.fetchone()[0]
 
-        # Insert ALL images under SAME gallery_id
         for url in images:
             cursor.execute(
-                "INSERT INTO galleries (gallery_id, user_id, image_url) VALUES (?, ?, ?)",
+                "INSERT INTO galleries (gallery_id, user_id, image_url) VALUES (%s, %s, %s)",
                 (gallery_id, uid, url)
             )
 
-        db.commit()
         del active_galleries[uid]
 
-        # SEND PERMANENT LINK
         await ctx.send(
-            f"🖼 **Gallery ({len(images)} images)**\n"
-            f"http://localhost:5000/gallery/{gallery_id}"
+            f"🖼 **Gallery created ({len(images)} images)**\n"
+            f"{GALLERY_BASE_URL}/gallery/{gallery_id}"
         )
         return
 
     # HELP
     await ctx.send(
-        "**Usage**\n"
+        "**Gallery Commands**\n"
         "`!gallery start` → upload images → `!gallery done`"
     )
 
-# ---------- RUN ----------
-
-import os
-
-bot.run(os.environ.get("DISCORD_TOKEN"))
-
-
+# ---------------- RUN ----------------
+bot.run(os.environ["DISCORD_TOKEN"])
