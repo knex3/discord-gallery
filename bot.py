@@ -4,11 +4,9 @@ from discord.ext import commands
 import psycopg2
 
 # ---------------- CONFIG ----------------
-GALLERY_BASE_URL = os.environ.get(
-    
-    GALLERY_BASE_URL = "https://discord-gallery-production.up.railway.app"
 
-)
+GALLERY_BASE_URL = "https://discord-gallery-production.up.railway.app"
+
 
 # ---------------- DISCORD ----------------
 intents = discord.Intents.default()
